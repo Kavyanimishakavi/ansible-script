@@ -1,0 +1,9 @@
+---
+- name: Create a file
+  hosts: w1
+  tasks:
+    - name: Create a file
+      become: yes
+      file:
+        path: /home/ec2-user/file.yaml
+        state: touch

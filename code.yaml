@@ -1,0 +1,12 @@
+---
+- hosts: w2
+  become: yes
+  tasks:
+    - name: httpd install
+      action: yum name=httpd state=installed
+      notify: restart httpd
+  handlers:
+    - name: restarted httpd
+      action: service name=httpd status=restarted
+          
+

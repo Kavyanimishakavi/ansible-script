@@ -1,0 +1,122 @@
+---
+- hosts: w1
+  tasks:
+  - name: create a VPC
+    amazon.aws.ec2_vpc_net:
+       name: vpc
+       cidr_block: 10.0.0.0/16
+       region: ap-southeast-1
+       state: present
+       tags:
+         name: vpc
+       tenancy: default
+    register: vpc1
+
+
+  - name: Create Internet gateway
+    amazon.aws.ec2_vpc_igw:
+     vpc_id: "{{vpc1.vpc.id}}"
+     state: present
+     region: ap-southeast-1
+     tags:
+       Name: igw1
+    register: igw    
+
+
+  - name: Create public subnet
+    amazon.aws.ec2_vpc_subnet:
+     state: present
+     vpc_id: "{{vpc1.vpc.id}}"
+     cidr: 10.0.0.0/17
+     region: ap-southeast-1
+     map_public: true
+     tags:
+       Name: public
+    register: pubone
+
+
+
+  - name: Create public subnet
+    amazon.aws.ec2_vpc_subnet:
+     state: present
+     vpc_id: "{{vpc1.vpc.id}}"
+     cidr: 10.0.128.0/18
+     region: ap-southeast-1
+     map_public: true
+     tags:
+       Name: publictwo
+    register: pubtwo
+
+  - name: Create private subnet
+    amazon.aws.ec2_vpc_subnet:
+     state: present
+     vpc_id: "{{vpc1.vpc.id}}"
+     cidr: 10.0.192.0/19
+     region: ap-southeast-1
+     map_public: false
+     tags:
+       Name: private1
+    register: private
+
+  - name: public subnet route table
+    amazon.aws.ec2_vpc_route_table:
+     vpc_id: "{{vpc1.vpc.id}}"
+     region: ap-southeast-1
+     tags:
+       Name: Public-route
+     subnets:
+       - "{{pubone.subnet.id}}"
+       - "{{pubtwo.subnet.id}}"
+     routes:
+       - dest: 0.0.0.0/0
+         gateway_id: "{{igw.gateway_id}}"
+    register: pubroute
+
+
+
+
+  - name: create a new EC2 key pair
+    amazon.aws.ec2_key:
+     name: my_keypair
+     region: ap-southeast-1  
+     state: present  
+    no_log: true
+    register: key
+
+  - name: create security group 
+    amazon.aws.ec2_security_group:
+      name: sg
+      region: ap-southeast-1
+      state: present  
+      description: sg with rule descriptions
+      vpc_id: "{{vpc1.vpc.id}}"
+      tags:
+        Name: security  
+      rules:
+        - proto: tcp
+          ports:
+           - 80
+           - 22  
+          cidr_ip: 0.0.0.0/0  
+      rules_egress:
+        - proto: all
+          cidr_ip: 0.0.0.0/0
+    register: secur 
+
+  
+  - name: create ec2
+    amazon.aws.ec2_instance:
+     name: "pubss"
+     key_name: "my_keypair"
+     vpc_subnet_id: "{{pubone.subnet.id}}"
+     instance_type: t2.micro
+     security_group: sg
+     region: ap-southeast-1
+     state: present
+     network:
+       assign_public_ip: true
+       user_data: "{{lookup('file', '/home/ec2-user/babby.sh')}}"
+     image_id: ami-0e4b5d31e60aa0acd
+     tags:
+       Name: ec2
+    register: instance

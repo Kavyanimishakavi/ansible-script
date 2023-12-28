@@ -1,0 +1,35 @@
+---
+- hosts: w4
+  become: yes
+  become_user: root 
+  tasks:  
+     - name:
+       package:
+         name: git
+         state: present 
+
+     - name: install httpd
+       package:
+         name: httpd
+         state: present
+
+     - name: starting the httpd
+       service:
+         name: httpd
+         state: started
+    
+     - name: enable the httpd
+       service:
+         name: httpd
+         enabled: true
+        
+     - name: git cloning
+       git:
+         repo: https://github.com/Kavyanimishakavi/food.git
+         dest: /var/www/html
+         force: yes
+
+     - name: restart the httpd
+       service:
+         name: httpd
+         state: restarted  
